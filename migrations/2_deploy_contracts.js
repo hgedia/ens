@@ -68,61 +68,41 @@ function deployAuctionRegistrar(deployer, tld) {
     });
 }
 
-function deployLivepeerENSRegistry(deployer,tld,accounts){
-  let rootNode = getRootNodeFromTLD(tld);
+function deployLivepeerENSRegistry(deployer,tld,accounts){  
   
-  //1. Deploy ENS and FIFS registrar
+  var rootNode = getRootNodeFromTLD(tld);
+
   deployer.deploy(ENS)
-    .then(() => {
-      console.log("=> Deploying registrar")
-      return deployer.deploy(Registrar, ENS.address, rootNode.namehash, 0)
-    })
     .then(()=>{
-      console.log("=> Setting TLD owner")
-      return ENS.at(ENS.address).setSubnodeOwner('0x0', rootNode.sha3, Registrar.address);
-    })
-    .then(()=>{
-      console.log("=> Deploying public resolver")
-      return deployer.deploy(PublicResolver,ENS.address);
-    })
-    
-
-  //2. Setup Reverse registration
-  deployer.deploy(DefaultReverseResolver,ENS.address)
-  .then(()=>{
-    console.log("=>Deploying Reverse registrar")    
-    return deployer.deploy(ReverseRegistrar, ENS.address, DefaultReverseResolver.address);
-  })
-  .then(()=>{
-   console.log("=> Setting up reverse node")
-   return ENS.at(ENS.address).setSubnodeOwner('0x0', web3.sha3('reverse'), accounts[0]);
-  })
-  .then(()=>{
-    console.log("=> Setting up reverse node owner to registrar")
-    return ENS.at(ENS.address).setSubnodeOwner(namehash('reverse'), web3.sha3('addr'), ReverseRegistrar.address);
-  });
-
-  //3. Setup livepeer contract registry  
-  deployer.deploy(SubdomainRegistrar, ENS.address, PublicResolver.address, namehash("livepeer.eth"), "livepeer.eth")
-  .then(()=> {
-    return ENS.at(ENS.address).setSubnodeOwner(namehash('eth'), web3.sha3('livepeer'), accounts[0])
-  })
-  .then(()=> {
-    return ENS.at(ENS.address).setOwner(namehash('livepeer.eth'), SubdomainRegistrar.address);
-  })
-
-  // Deploy the ENS & setup regitrar
-  console.log("=".repeat(25) + " Deployment status " + "=".repeat(25))
-  console.log("Account " + accounts[0])
-  console.log("ENS : " + ENS.address);
-  console.log("ENS FIFS Registrar : " + Registrar.address);
-  console.log("Reverse Registrar : " + ReverseRegistrar.address);
-  console.log("Default Reverse resolver  : " + DefaultReverseResolver.address);
-  console.log("Livepeer Subdomain Registrar : " + SubdomainRegistrar.address);
-  console.log("=".repeat(72))
+    return deployer.deploy(FIFSRegistrar, ENS.address, rootNode.namehash);   
+    }).then(()=>{
+      return ENS.at(ENS.address).setSubnodeOwner('0x0', rootNode.sha3, FIFSRegistrar.address);
+    }).then(() => {
+      return deployer.deploy(DefaultReverseResolver,ENS.address)
+    }).then(()=>{
+      return deployer.deploy(ReverseRegistrar, ENS.address, DefaultReverseResolver.address)
+    }).then(() => {
+      return deployer.deploy(PublicResolver, ENS.address)
+    }).then(()=>{
+      return ENS.at(ENS.address).setSubnodeOwner('0x0', web3.sha3('reverse'), accounts[0]);
+    }).then(()=>{
+      return ENS.at(ENS.address).setSubnodeOwner(namehash('reverse'), web3.sha3('addr'), ReverseRegistrar.address);
+    }).then(()=>{
+      return deployer.deploy(SubdomainRegistrar, ENS.address, PublicResolver.address, namehash("livepeer.eth"), "livepeer.eth")
+    }).then(() => {
+      return FIFSRegistrar.at(FIFSRegistrar.address).register(web3.sha3('livepeer'), SubdomainRegistrar.address);
+    }).then(()=>{
+      // Deploy the ENS & setup regitrar
+      console.log("=".repeat(25) + " Deployment status " + "=".repeat(25))
+      console.log("Account " + accounts[0])
+      console.log("ENS : " + ENS.address);
+      console.log("ENS FIFS Registrar : " + FIFSRegistrar.address);
+      console.log("Reverse Registrar : " + ReverseRegistrar.address);
+      console.log("Default Reverse resolver  : " + DefaultReverseResolver.address);
+      console.log("Livepeer Subdomain Registrar : " + SubdomainRegistrar.address);
+      console.log("=".repeat(72))
+    })    
 }
-
-
 
 module.exports = function(deployer, network,accounts) {
   var tld = 'eth';
